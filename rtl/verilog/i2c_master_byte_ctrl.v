@@ -190,7 +190,7 @@ module i2c_master_byte_ctrl (
 	//
 	// state machine
 	//
-	reg [4:0] c_state; // synopsys enum_state
+	reg [4:0] c_state;
 
 	always @(posedge clk)
 	  if (rst | i2c_al)
