@@ -77,7 +77,7 @@
 `include "i2c_master_defines.v"
 
 module i2c_master_top(
-	wb_clk_i, wb_rst_i, arst_i, wb_adr_i, wb_dat_i, wb_dat_o,
+	wb_clk_i, wb_rst_i, wb_adr_i, wb_dat_i, wb_dat_o,
 	wb_we_i, wb_stb_i, wb_cyc_i, wb_ack_o, wb_inta_o,
 	scl_pad_i, scl_pad_o, scl_padoen_o, sda_pad_i, sda_pad_o, sda_padoen_o );
 
@@ -91,7 +91,6 @@ module i2c_master_top(
 	// wishbone signals
 	input        wb_clk_i;     // master clock input
 	input        wb_rst_i;     // synchronous active high reset
-	input        arst_i;       // asynchronous reset
 	input  [2:0] wb_adr_i;     // lower address bits
 	input  [7:0] wb_dat_i;     // databus input
 	output [7:0] wb_dat_o;     // databus output
@@ -149,9 +148,6 @@ module i2c_master_top(
 	// module body
 	//
 
-	// generate internal reset
-	wire rst_i = arst_i ^ ARST_LVL;
-
 	// generate wishbone signals
 	wire wb_wacc = wb_cyc_i & wb_stb_i & wb_we_i;
 
@@ -175,14 +171,8 @@ module i2c_master_top(
 	end
 
 	// generate registers
-	always @(posedge wb_clk_i or negedge rst_i)
-	  if (!rst_i)
-	    begin
-	        prer <= #1 16'hffff;
-	        ctr  <= #1  8'h0;
-	        txr  <= #1  8'h0;
-	    end
-	  else if (wb_rst_i)
+	always @(posedge wb_clk_i)
+	  if (wb_rst_i)
 	    begin
 	        prer <= #1 16'hffff;
 	        ctr  <= #1  8'h0;
@@ -199,10 +189,8 @@ module i2c_master_top(
 	      endcase
 
 	// generate command register (special case)
-	always @(posedge wb_clk_i or negedge rst_i)
-	  if (!rst_i)
-	    cr <= #1 8'h0;
-	  else if (wb_rst_i)
+	always @(posedge wb_clk_i)
+	  if (wb_rst_i)
 	    cr <= #1 8'h0;
 	  else if (wb_wacc)
 	    begin
@@ -235,7 +223,6 @@ module i2c_master_top(
 	i2c_master_byte_ctrl byte_controller (
 		.clk      ( wb_clk_i     ),
 		.rst      ( wb_rst_i     ),
-		.nReset   ( rst_i        ),
 		.ena      ( core_en      ),
 		.clk_cnt  ( prer         ),
 		.start    ( sta          ),
@@ -258,15 +245,8 @@ module i2c_master_top(
 	);
 
 	// status register block + interrupt request signal
-	always @(posedge wb_clk_i or negedge rst_i)
-	  if (!rst_i)
-	    begin
-	        al       <= #1 1'b0;
-	        rxack    <= #1 1'b0;
-	        tip      <= #1 1'b0;
-	        irq_flag <= #1 1'b0;
-	    end
-	  else if (wb_rst_i)
+	always @(posedge wb_clk_i)
+        if (wb_rst_i)
 	    begin
 	        al       <= #1 1'b0;
 	        rxack    <= #1 1'b0;
@@ -282,10 +262,8 @@ module i2c_master_top(
 	    end
 
 	// generate interrupt request signals
-	always @(posedge wb_clk_i or negedge rst_i)
-	  if (!rst_i)
-	    wb_inta_o <= #1 1'b0;
-	  else if (wb_rst_i)
+	always @(posedge wb_clk_i)
+	  if (wb_rst_i)
 	    wb_inta_o <= #1 1'b0;
 	  else
 	    wb_inta_o <= #1 irq_flag && ien; // interrupt signal is only generated when IEN (interrupt enable bit is set)
